@@ -1409,11 +1409,11 @@ for g in np.unique(master_dataframe_delfos['gameId']):
         line_analytics_tem['lineId'] = line_st
         line_analytics_tem['lineTeam'] = ''
         line_analytics_tem['QB'] = _d_delfos['nflId_QB'].iloc[0]
-        line_analytics_tem['perc_visual_total'] = _d_delfos['perc_visual_total'].iloc[0]
+        line_analytics_tem['perc_visual_total'] = _d_delfos['perc_visual'].sum()
         
         line_analytics = pd.concat([line_analytics, line_analytics_tem])
 
-line_analytics['DELFOS'] = 1 - line_analytics['perc_visual_total']
+line_analytics['DELFOS'] = line_analytics['perc_visual_total']
 line_analytics['code'] = line_analytics['gameId'] + '-' + line_analytics['playId']
 
 _plays = plays.copy()
@@ -1439,7 +1439,7 @@ line_analytics_d_h['PassPerc'] = line_analytics_d_h['PassPerc'].apply(lambda x: 
 
 fig = px.scatter(x = 100 * line_analytics_d['DELFOS'], y = 100 * line_analytics_d['passResult'], trendline="ols")
 fig.update_yaxes(title_text="Pass accuracy (%)")
-fig.update_xaxes(title_text="Visual Field Available")
+fig.update_xaxes(title_text="DELFOS")
 # fig.update_yaxes(title_text="Pass accuracy (%)", secondary_y = True)
 fig.update_xaxes(showline = True, linewidth=1, mirror = True, linecolor='black')
 fig.update_yaxes(showline = True, linewidth=1, mirror = True, linecolor='black')
@@ -1457,7 +1457,7 @@ fig.update_traces(marker=dict(size=12,
 fig.update_layout( # customize font and legend orientation & position
     font_family = "Georgia",
     font_color="black",
-    font_size = 15,
+    font_size = 16,
     legend=dict(
         font_size = 10, title=None, orientation = 'h', yanchor="bottom",
         y=1, x = 0.01, xanchor="left"))
@@ -1471,5 +1471,36 @@ fig.show()
 
 line_analytics_t = line_analytics.groupby('possessionTeam').agg({'DELFOS':'mean'}).sort_values('DELFOS',ascending = False).head(10)
 line_analytics_t['DELFOS'] = line_analytics_t['DELFOS'].apply(lambda x: str(np.round(100 * x, 2)) + '%')
+
+
+#Defender analytics
+def_analytics = master_dataframe_delfos.copy()
+for i in range(len(def_analytics)):
+    if pd.isna(def_analytics['closest_defender'].iloc[i]) == True:
+        def_analytics.loc[def_analytics.index[i], 'closest_defender'] = def_analytics['nflId'].iloc[i]
+
+def_analytics_g = def_analytics.groupby('closest_defender').agg({'perc_visual_single': 'mean','x_QB':'count'})
+def_analytics_g.reset_index(inplace = True)
+def_analytics_g.columns = ['Defender', 'DELFOS', 'NPlays']
+def_analytics_g = def_analytics_g[def_analytics_g['NPlays'] >= 50].copy()
+
+_players = players.copy()
+_players['nflId'] = _players['nflId'].apply(lambda x: int(x))
+def_analytics_g = def_analytics_g.merge(players[['nflId', 'displayName', 'officialPosition']], left_on  = 'Defender',
+                                        right_on = 'nflId', how = 'left')
+
+def_analytics_g.drop(columns = ['nflId'], inplace = True)
+def_analytics_g = def_analytics_g.sort_values('DELFOS', ascending = False)
+def_analytics_g_h = def_analytics_g.head(10)
+def_analytics_g_h['DELFOS'] = def_analytics_g_h['DELFOS'].apply(lambda x: str(np.round(100 * x, 2)) + '%')
+
+
+
+
+
+
+
+
+
 
 
